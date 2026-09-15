@@ -28,7 +28,26 @@ struct ReadResult
 	std::string symbologyIdentifier{};
 };
 
-std::vector<ReadResult> readBarcodes(ImageView iv, bool tryHarder, const std::string& format, int maxSymbols)
+static TextMode TextModeFromString(std::string textMode)
+{
+	for (auto& c : textMode)
+		c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+
+	if (textMode == "PLAIN")
+		return TextMode::Plain;
+	if (textMode == "ECI")
+		return TextMode::ECI;
+	if (textMode == "HRI")
+		return TextMode::HRI;
+	if (textMode == "HEX")
+		return TextMode::Hex;
+	if (textMode == "ESCAPED")
+		return TextMode::Escaped;
+
+	throw std::invalid_argument("Invalid textMode name");
+}
+
+std::vector<ReadResult> readBarcodes(ImageView iv, bool tryHarder, const std::string& format, int maxSymbols, const std::string& textMode = "HRI")
 {
 	try {
 		auto opts = ReaderOptions()
@@ -38,7 +57,8 @@ std::vector<ReadResult> readBarcodes(ImageView iv, bool tryHarder, const std::st
 			.tryDownscale(tryHarder)
 			.formats(BarcodeFormatsFromString(format))
 //			.returnErrors(maxSymbols > 1)
-			.maxNumberOfSymbols(maxSymbols);
+			.maxNumberOfSymbols(maxSymbols)
+			.textMode(TextModeFromString(textMode));
 
 		auto barcodes = ReadBarcodes(iv, opts);
 
@@ -68,7 +88,7 @@ std::vector<ReadResult> readBarcodes(ImageView iv, bool tryHarder, const std::st
 	return {};
 }
 
-std::vector<ReadResult> readBarcodesFromImage(int bufferPtr, int bufferLength, bool tryHarder, std::string format, int maxSymbols)
+std::vector<ReadResult> readBarcodesFromImage(int bufferPtr, int bufferLength, bool tryHarder, std::string format, int maxSymbols, const std::string textMode = "HRI")
 {
 	int width, height, channels;
 	std::unique_ptr<stbi_uc, void (*)(void*)> buffer(
@@ -77,22 +97,22 @@ std::vector<ReadResult> readBarcodesFromImage(int bufferPtr, int bufferLength, b
 	if (buffer == nullptr)
 		return {{"", "", {}, "Error loading image"}};
 
-	return readBarcodes({buffer.get(), width, height, ImageFormat::Lum}, tryHarder, format, maxSymbols);
+	return readBarcodes({buffer.get(), width, height, ImageFormat::Lum}, tryHarder, format, maxSymbols, textMode);
 }
 
-ReadResult readBarcodeFromImage(int bufferPtr, int bufferLength, bool tryHarder, std::string format)
+ReadResult readBarcodeFromImage(int bufferPtr, int bufferLength, bool tryHarder, std::string format, const std::string textMode = "HRI")
 {
-	return FirstOrDefault(readBarcodesFromImage(bufferPtr, bufferLength, tryHarder, format, 1));
+	return FirstOrDefault(readBarcodesFromImage(bufferPtr, bufferLength, tryHarder, format, 1, textMode));
 }
 
-std::vector<ReadResult> readBarcodesFromPixmap(int bufferPtr, int imgWidth, int imgHeight, bool tryHarder, std::string format, int maxSymbols)
+std::vector<ReadResult> readBarcodesFromPixmap(int bufferPtr, int imgWidth, int imgHeight, bool tryHarder, std::string format, int maxSymbols, const std::string textMode = "HRI")
 {
-	return readBarcodes({reinterpret_cast<uint8_t*>(bufferPtr), imgWidth, imgHeight, ImageFormat::RGBA}, tryHarder, format, maxSymbols);
+	return readBarcodes({reinterpret_cast<uint8_t*>(bufferPtr), imgWidth, imgHeight, ImageFormat::RGBA}, tryHarder, format, maxSymbols, textMode);
 }
 
-ReadResult readBarcodeFromPixmap(int bufferPtr, int imgWidth, int imgHeight, bool tryHarder, std::string format)
+ReadResult readBarcodeFromPixmap(int bufferPtr, int imgWidth, int imgHeight, bool tryHarder, std::string format, const std::string textMode = "HRI")
 {
-	return FirstOrDefault(readBarcodesFromPixmap(bufferPtr, imgWidth, imgHeight, tryHarder, format, 1));
+	return FirstOrDefault(readBarcodesFromPixmap(bufferPtr, imgWidth, imgHeight, tryHarder, format, 1, textMode));
 }
 
 EMSCRIPTEN_BINDINGS(BarcodeReader)
