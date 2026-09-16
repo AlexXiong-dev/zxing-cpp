@@ -12,6 +12,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -115,6 +116,27 @@ ReadResult readBarcodeFromPixmap(int bufferPtr, int imgWidth, int imgHeight, boo
 	return FirstOrDefault(readBarcodesFromPixmap(bufferPtr, imgWidth, imgHeight, tryHarder, format, 1, textMode));
 }
 
+std::vector<ReadResult> readBarcodesFromImageBackwardCompatible(int bufferPtr, int bufferLength, bool tryHarder, std::string format, int maxSymbols)
+{
+	return readBarcodesFromImage(bufferPtr, bufferLength, tryHarder, std::move(format), maxSymbols);
+}
+
+ReadResult readBarcodeFromImageBackwardCompatible(int bufferPtr, int bufferLength, bool tryHarder, std::string format)
+{
+	return readBarcodeFromImage(bufferPtr, bufferLength, tryHarder, std::move(format));
+}
+
+std::vector<ReadResult> readBarcodesFromPixmapBackwardCompatible(int bufferPtr, int imgWidth, int imgHeight, bool tryHarder, std::string format,
+																											int maxSymbols)
+{
+	return readBarcodesFromPixmap(bufferPtr, imgWidth, imgHeight, tryHarder, std::move(format), maxSymbols);
+}
+
+ReadResult readBarcodeFromPixmapBackwardCompatible(int bufferPtr, int imgWidth, int imgHeight, bool tryHarder, std::string format)
+{
+	return readBarcodeFromPixmap(bufferPtr, imgWidth, imgHeight, tryHarder, std::move(format));
+}
+
 EMSCRIPTEN_BINDINGS(BarcodeReader)
 {
 	using namespace emscripten;
@@ -137,9 +159,13 @@ EMSCRIPTEN_BINDINGS(BarcodeReader)
 
 	register_vector<ReadResult>("vector<ReadResult>");
 
+	function("readBarcodeFromImage", &readBarcodeFromImageBackwardCompatible);
 	function("readBarcodeFromImage", &readBarcodeFromImage);
+	function("readBarcodeFromPixmap", &readBarcodeFromPixmapBackwardCompatible);
 	function("readBarcodeFromPixmap", &readBarcodeFromPixmap);
 
+	function("readBarcodesFromImage", &readBarcodesFromImageBackwardCompatible);
 	function("readBarcodesFromImage", &readBarcodesFromImage);
+	function("readBarcodesFromPixmap", &readBarcodesFromPixmapBackwardCompatible);
 	function("readBarcodesFromPixmap", &readBarcodesFromPixmap);
 };
